@@ -6,6 +6,7 @@ import connectDB from './db/connectDB.js';
 import authRouter from './routes/auth.route.js';
 import adminRoutes from './routes/adminRoutes.js';
 import transactionRoutes from './routes/transactionRoutes.js';
+import requestRoute from './routes/requestRoutes.js';
 
 dotenv.config(); // Load environment variables
 
@@ -26,6 +27,7 @@ app.use(cookieParser()); // Parse cookies
 app.use('/api/auth', authRouter);
 app.use('/api/admin', adminRoutes);
 app.use('/api/transaction', transactionRoutes);
+app.use('/api/requests', requestRoute);
 
 // http://localhost:5000/api/transaction/verify-account
 

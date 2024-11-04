@@ -197,7 +197,7 @@ export const checkAuth = async (req, res) => {
   try {
     // Fetch the user based on the userId from the token
     const user = await User.findById(req.body.userId).select("-password");
-    console.log(user)
+ 
 
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });

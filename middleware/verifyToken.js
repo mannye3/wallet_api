@@ -9,13 +9,13 @@ export const verifyToken = (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("Decoded token:", decoded); // Check the output
+   
 
     // Attach userId to the request object
     req.body.userId = decoded.userId;
    // req.userId = decoded.userId; // Make sure this line is executed
 
-    console.log("Token verification passed. User ID:", req.body.userId); // Check the output here
+    
     next();
   } catch (error) {
     console.error("Error while verifying token:", error);

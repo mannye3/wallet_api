@@ -3,9 +3,10 @@ import mongoose from 'mongoose';
 
 import { User } from '../models/user.model.js';
 import Transaction from '../models/transactionModel.js';
-import { sendEmailNotification, sendDepositEmail} from "../utils/emailService.js";
+import { sendEmailNotification, sendDepositEmail, sendStatusUpdateEmail, sendEmailNotificationRequest } from "../utils/emailService.js";
 import Stripe from 'stripe';
 import { v4 as uuidv4 } from 'uuid';
+import { Request } from '../models/requestModel.js';
 
 
 
@@ -96,6 +97,7 @@ export const transfer = async (req, res) => {
 export const getAllTransactions = async (req, res) => {
   try {
   
+    console.log('Received User ID:', req.body.userId);
      //const transactions = await Transaction.find({ $or: [{sender: req.body.userId}, {receiver: req.body.userId}] })
       const transactions = await Transaction.find({ $or: [{sender: req.body.userId}, {receiver: req.body.userId}] }).
      sort({createdAt: -1}).populate("sender").populate("receiver");
@@ -104,6 +106,27 @@ export const getAllTransactions = async (req, res) => {
     res.status(200).json({
       success: true,
       data: transactions,
+      token: req.token,
+    });
+  } catch (error) {
+    console.error("Error in CheckAuth:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+}
+
+
+export const getUserRequest = async (req, res) => {
+  try {
+  
+   
+     //const transactions = await Transaction.find({ $or: [{sender: req.body.userId}, {receiver: req.body.userId}] })
+      const requests = await Request.find({ $or: [{sender: req.body.userId}, {receiver: req.body.userId}] }).
+      sort({createdAt: -1}).populate("sender").populate("receiver");
+    
+
+    res.status(200).json({
+      success: true,
+      data: requests,
       token: req.token,
     });
   } catch (error) {
@@ -143,73 +166,83 @@ export const verifyAccount = async (req, res) => {
 
 
 
-// export const DepositFunds = async (req, res) => {
-//   try {
-//     const { amount, token } = req.body; // Ensure userId is in the request body
+export const updateRequest = async (req, res) => {
+  try {
+    const { status, amount, sender, receiver, description, _id } = req.body;
 
-//     // Validate input
-//     if (!amount || !token) {
-//       return res.status(400).send({
-//         success: false,
-//         message: 'Missing required fields',
-//       });
-//     }
+    if (!status || !sender || !receiver) {
+      return res.status(400).send({
+        success: false,
+        message: "Missing required fields in request body",
+      });
+    }
 
-//     const user = await User.findById(req.body.userId).select("-password");
-//     console.log(user)
-//     // Step 1: Create a customer in Stripe
-//     const customer = await stripe.customers.create({
-//       email: token.email, // Store the email of the customer
-//       source: token.id, // Associate the token with this customer
-//     });
+    if (status === "accepted") {
+      // Create a transaction
+      const transaction = new Transaction({
+        sender: receiver._id,
+        receiver: sender._id,
+        amount,
+        reference: description,
+        status: "completed",
+        type: "transfer",
+      });
+      await transaction.save();
 
-//     // Step 2: Create a charge for the customer
-//     const charge = await stripe.charges.create({
-//       amount: amount * 100, // Amount in cents
-//       currency: 'usd',
-//       customer: customer.id, // Charge the customer
-//       description: 'Deposit to account',
-//     });
+      // Deduct the amount from the sender
+      await User.findByIdAndUpdate(receiver._id, {
+        $inc: { balance: -amount },
+      });
 
-//     // Step 3: Save the transaction to the database
-//     if (charge.status === 'succeeded') {
-//       const transaction = new Transaction({
-//         sender: res.body.userId, // Use the userId from the request body
-//         receiver:  res.body.userId, // Deposit made to the same user's account
-//         amount,
-//         status: 'completed', // Change this based on your logic
-//         type: 'deposit', // Use lowercase to match the enum values
-//         reference: `TX-${Date.now()}`, // Generate a unique reference
-//       });
+      // Add the amount to the receiver
+      await User.findByIdAndUpdate(sender._id, {
+        $inc: { balance: amount },
+      });
 
-//       await transaction.save(); // Save the transaction record
+      const senderAccount = sender
+      const receiverAccount = receiver
 
-//       // Update user's balance
-//       await User.findByIdAndUpdate(res.body.userId, {
-//         $inc: { balance: amount }, // Increment the user's balance
-//       });
+      await sendEmailNotificationRequest(senderAccount, receiverAccount, amount);
 
-//       return res.status(200).send({
-//         success: true,
-//         message: 'Deposit successful!',
-//         data: transaction,
-//       });
-//     } else {
-//       return res.status(400).send({
-//         success: false,
-//         message: 'Deposit failed!',
-//         data: charge,
-//       });
-//     }
-//   } catch (error) {
-//     console.error('Error during deposit:', error); // Log the error for debugging
-//     return res.status(500).send({
-//       success: false,
-//       message: 'Deposit failed!',
-//       error: error.message || 'An error occurred', // Send the error message if available
-//     });
-//   }
-// };
+      // Send acceptance email with updated balances
+      await sendStatusUpdateEmail(
+        sender.email,
+        "accepted",
+        amount,
+        description,
+        sender._id,
+        receiver._id
+      );
+    } else if (status === "rejected") {
+      // Send rejection email with current balances
+      await sendStatusUpdateEmail(
+        sender.email,
+        "rejected",
+        amount,
+        description,
+        sender._id,
+        receiver._id
+      );
+    }
+
+    // Update request status
+    await Request.findByIdAndUpdate(_id, { status });
+
+    res.send({
+      data: null,
+      message: `Request status updated to ${status} successfully`,
+      success: true,
+    });
+  } catch (error) {
+    console.error("Error updating request status:", error);
+    res.status(500).send({
+      data: error,
+      message: error.message,
+      success: false,
+    });
+  }
+};
+
 
 
 export const DepositFunds = async (req, res) => {
