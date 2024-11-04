@@ -1,14 +1,14 @@
 # Node Authentication
 
-A secure Node.js authentication system using JSON Web Tokens (JWT). This project provides a robust backend foundation for user authentication, featuring easy integration with Express.js applications and customizable middleware for token verification. It also includes email verification, password reset functionality, and best practices for security.
+A backend service built with Node.js, Express, and MongoDB to support wallet functionalities like fund requests, balance updates, transaction history, and user authentication.
 
 ## Features
 
-- **User authentication using JWT:** Securely authenticate users and manage sessions with JWT tokens.
-- **Middleware for token verification:** Easily protect routes by verifying tokens with custom middleware.
-- **Password hashing with bcrypt:** Safely store user passwords using bcrypt for secure password hashing.
-- **Email verification:** Ensure users validate their email addresses before accessing the system.
-- **Password reset functionality:** Allow users to securely reset their passwords via email.
+- User Authentication (JWT-based).
+- CRUD operations for wallet transactions.
+- Real-time balance updates with MongoDB transactions.
+- Request/approval workflow for fund transfers.
+- Error handling and response management.
 
 - **Secure HTTP headers with Helmet.js:** Improve security by setting various HTTP headers using Helmet.js.
 - **MongoDB for persistent storage:** Store user data, token info, and other authentication-related data in MongoDB.
@@ -17,7 +17,7 @@ A secure Node.js authentication system using JSON Web Tokens (JWT). This project
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/mannye3/nodeAuthP.git
+   git clone https://github.com/mannye3/wallet_api.git
    ```
 2. Install the dependencies:
    ```bash
@@ -35,7 +35,7 @@ A secure Node.js authentication system using JSON Web Tokens (JWT). This project
    MONGO_URI=your_mongo_connection_string_here
 
    # Server Configuration
-   PORT=3000
+   PORT=5000
    NODE_ENV=development
 
    # Email Configuration (for password reset and email verification)
@@ -51,7 +51,7 @@ A secure Node.js authentication system using JSON Web Tokens (JWT). This project
    ```bash
    npm start
    ```
-2. The server will run on `http://localhost:3000` (or the port specified in your `.env` file).
+2. The server will run on `http://localhost:5000` (or the port specified in your `.env` file).
 3. Use API endpoints to handle authentication-related tasks such as user registration, login, email verification, and password resets.
 
 ## API Endpoints
@@ -68,26 +68,35 @@ A secure Node.js authentication system using JSON Web Tokens (JWT). This project
 ### Protected Routes
 
 - **GET** `/api/check-auth`: An example of a protected route that requires valid JWT authentication.
+
   - This route demonstrates how to protect certain parts of your application by requiring JWT in the headers.
+
+  ### Transctions
+
+- **POST** `/api/transactions/transfer-fund`: Transfer funds to other accounts
+- **POST** `/api/transactions/deposit-fund`: Deposit funds to your account using stripe
+- **GET** `/api/transactions/user-transactions`: User transaction
+- **POST** `/api/transactions/user-requests`: Send transaction requests
+- **POST** `/api/transactions/update-request`: Update transaction request
 
 ## Example Usage with cURL
 
 **Registration**:
 
 ```bash
-curl -X POST http://localhost:3000/api/auth/register -H "Content-Type: application/json" -d '{"name":"John Doe", "email":"john@example.com", "password":"yourpassword"}'
+curl -X POST http://localhost:5000/api/auth/register -H "Content-Type: application/json" -d '{"name":"John Doe", "email":"john@example.com", "password":"yourpassword"}'
 ```
 
 **Login**:
 
 ```bash
-curl -X POST http://localhost:3000/api/auth/login -H "Content-Type: application/json" -d '{"email":"john@example.com", "password":"yourpassword"}'
+curl -X POST http://localhost:5000/api/auth/login -H "Content-Type: application/json" -d '{"email":"john@example.com", "password":"yourpassword"}'
 ```
 
 **Verify Email**:
 
 ```bash
-curl -X GET http://localhost:3000/api/auth/verify-email?token=your-verification-token
+curl -X GET http://localhost:5000/api/auth/verify-email?token=your-verification-token
 ```
 
 ## Security Features
